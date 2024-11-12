@@ -4,7 +4,7 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+
 load_dotenv()
 
 
@@ -19,7 +19,6 @@ def encode_image(image_file):
 def process_image_with_openai(image_file, prompt):
     """Process image using OpenAI's Vision API"""
     try:
-        # Initialize OpenAI client
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         # Encode image
@@ -55,22 +54,21 @@ def process_image_with_openai(image_file, prompt):
 def apply_style_to_mermaid(draft_code, style_prompt):
     """Apply styling to Mermaid code without sending image again"""
     try:
-        # Initialize OpenAI client
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         # Prepare messages with draft code and style prompt
         messages = [
             {
                 "role": "user",
-                "content": f"{style_prompt}\n\nHere's the Mermaid.js code to style:\n{draft_code}",
+                "content": f"{style_prompt}\n\nApply the style guide to the following Mermaid code. Do not change the labels:\n{draft_code}",
             }
         ]
 
-        # Make API call using standard GPT-4
         response = client.chat.completions.create(
-            model="gpt-4-turbo",
+            model="gpt-4o-mini",
             messages=messages,
             max_tokens=1000,
+            temperature=0,  # Strict responses
         )
 
         return response.choices[0].message.content

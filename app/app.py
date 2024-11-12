@@ -1,4 +1,3 @@
-# app/app.py
 import streamlit as st
 from PIL import Image
 import io
@@ -16,81 +15,176 @@ def load_image(image_file):
         return None
 
 
+def apply_zoom_to_mermaid(mermaid_code: str, zoom_level: float) -> str:
+    """Apply zoom level to Mermaid code by adding initialization directive"""
+    init_directive = f"""%%{{init: {{
+        "theme": "dark",
+        "flowchart": {{
+            "curve": "basis",
+            "nodeSpacing": {50 * zoom_level},
+            "rankSpacing": {50 * zoom_level}
+        }}
+    }}}}%%\n"""
+
+    if "%%{init:" in mermaid_code:
+        import re
+
+        mermaid_code = re.sub(r"%%{init:.*?}%%\n?", "", mermaid_code)
+
+    return init_directive + mermaid_code
+
+
 def main():
     st.set_page_config(
-        page_title="Sketch to Mermaid Converter", page_icon="📊", layout="wide"
+        page_title="Sketch to Professional Visual Converter",
+        page_icon="📊",
+        layout="wide",
+        initial_sidebar_state="collapsed",
     )
 
-    st.title("Sketch to Mermaid.js Converter")
-    st.write(
-        "Upload a sketch or screenshot of your flowchart to convert it to Mermaid.js code."
-    )
+    # Initialize session state
+    if "generation_completed" not in st.session_state:
+        st.session_state.generation_completed = False
+    if "zoom_level" not in st.session_state:
+        st.session_state.zoom_level = 1.0
+    if "base_mermaid_code" not in st.session_state:
+        st.session_state.base_mermaid_code = None
+    if "processing" not in st.session_state:
+        st.session_state.processing = False
 
-    # Initialize session state for storing the generated code
-    if "mermaid_code" not in st.session_state:
-        st.session_state.mermaid_code = None
+    # Header Section
+    left_spacer, center_col, right_spacer = st.columns([2, 6, 2])
 
-    # File uploader
-    uploaded_file = st.file_uploader(
-        "Choose an image file",
-        type=["png", "jpg", "jpeg"],
-        help="Upload a screenshot or sketch of your flowchart",
-    )
+    with center_col:
+        st.title("Sketch to Visual Converter")
+        st.write(
+            "Transform your sketches into professional diagrams with AI and Mermaid.js."
+        )
 
-    # Create two columns for layout
-    col1, col2 = st.columns(2)
+    # Simple step guide with centered layout
+    spacer1, col1, col2, col3, spacer2 = st.columns([2, 2, 2, 2, 2])
 
-    if uploaded_file is not None:
-        # Load and display the image
-        image = load_image(uploaded_file)
-        if image:
-            with col1:
-                st.subheader("Uploaded Image")
-                st.image(image, use_container_width=True)
+    with col1:
+        st.caption("1️⃣ Upload your sketch")
+        st.markdown("Take a photo or screenshot of your hand-written diagram sketch")
+    with col2:
+        st.caption("2️⃣ Generate diagram")
+        st.markdown("Click generate and wait for processing of your uploaded sketch")
+    with col3:
+        st.caption("3️⃣ Explore & export")
+        st.markdown("Explore visual by zooming in or out and download code if desired")
 
-            with col2:
-                st.subheader("Generated Mermaid Diagram")
-                if st.session_state.mermaid_code:
-                    # Render Mermaid diagram using streamlit-mermaid
-                    st_mermaid(st.session_state.mermaid_code, height="400px")
+    st.markdown("---")
 
-                    # Add code display with copy button
-                    st.subheader("Mermaid.js Code")
-                    st.code(st.session_state.mermaid_code, language="mermaid")
+    # Upload Section - Updated help text
+    with st.container():
+        st.subheader("Upload Sketch")
+        uploaded_file = st.file_uploader(
+            "Choose an image file",
+            type=["png", "jpg", "jpeg"],
+            help="Supported formats: PNG, JPEG",  # More generic help text
+        )
+        if uploaded_file is not None:
+            image = load_image(uploaded_file)
+            if image is None:
+                st.error(
+                    "Unable to process image. Please ensure it's a valid PNG or JPEG file."
+                )
+                generate_button = st.button("Generate Mermaid Diagram", disabled=True)
+            else:
+                generate_button = st.button(
+                    "Generate Mermaid Diagram",
+                    type="primary",
+                    use_container_width=False,
+                )
+        else:
+            generate_button = st.button("Generate Mermaid Diagram", disabled=True)
 
-                    # Add download button
-                    st.download_button(
-                        label="Download Mermaid Code",
-                        data=st.session_state.mermaid_code,
-                        file_name="flowchart.md",
-                        mime="text/plain",
-                    )
-                else:
-                    st.info("Click 'Generate Mermaid Diagram' to process the image")
+    st.markdown("---")
 
-            # Add processing button
-            if st.button("Generate Mermaid Diagram", type="primary"):
+    # Main content area
+    if uploaded_file is not None and image is not None:
+        left_col, right_col = st.columns([1, 1], gap="large")
+
+        with left_col:
+            st.subheader("Original Image")
+            st.markdown("")
+            if image:
+                st.image(image, use_container_width=True, width=600)
+
+        with right_col:
+            st.subheader("Generated Diagram")
+            st.markdown("")
+
+            # Processing logic - Updated messages
+            if generate_button:
+                st.session_state.processing = True
+
+            if st.session_state.processing:
                 try:
-                    with st.spinner("Processing image..."):
-                        # Generate draft diagram
+                    with st.spinner("Converting your sketch to Mermaid diagram..."):
                         draft_code = process_image_with_openai(
                             uploaded_file, DRAFT_PROMPT
                         )
-
-                        # Apply styling without sending image again
                         styled_code = apply_style_to_mermaid(draft_code, STYLE_GUIDE)
-
-                        # Store the result
-                        st.session_state.mermaid_code = styled_code
-
-                        # Show success message
-                        st.success("Diagram generated successfully!")
-
-                        # Rerun to update the display
-                        st.rerun()
-
+                        st.session_state.base_mermaid_code = styled_code
+                        st.session_state.generation_completed = True
+                        st.session_state.processing = False
+                        st.success(
+                            "✨ Diagram generated! Use the toolbar below to adjust the view. Use the code view to download the mermaid code."
+                        )
                 except Exception as e:
-                    st.error(f"Error generating diagram: {str(e)}")
+                    st.error(
+                        "⚠️ Generation failed. The image might be too complex or unclear. Please try again."
+                    )
+                    st.session_state.processing = False
+                    st.session_state.generation_completed = False
+
+            # Initialize tabs
+            tab1, tab2 = st.tabs(["Diagram view", "Code view"])
+
+            with tab1:
+                if st.session_state.generation_completed:
+                    # ... (zoom controls remain the same)
+                    cols = st.columns([1, 1, 1, 10])
+
+                    with cols[0]:
+                        if st.button("➕", help="Increase diagram size"):
+                            st.session_state.zoom_level = min(
+                                2.5, st.session_state.zoom_level + 0.5
+                            )
+
+                    with cols[1]:
+                        if st.button("➖", help="Decrease diagram size"):
+                            st.session_state.zoom_level = max(
+                                0.5, st.session_state.zoom_level - 0.5
+                            )
+
+                    with cols[2]:
+                        if st.button("⟲", help="Reset diagram size"):
+                            st.session_state.zoom_level = 1.0
+
+                    zoomed_code = apply_zoom_to_mermaid(
+                        st.session_state.base_mermaid_code, st.session_state.zoom_level
+                    )
+                    st_mermaid(zoomed_code, height="700px")
+
+                else:
+                    if not st.session_state.processing:
+                        st.info(
+                            "Upload an image and click 'Generate Mermaid Diagram' to start"
+                        )
+
+            with tab2:
+                if st.session_state.generation_completed:
+                    st.code(st.session_state.base_mermaid_code, language="mermaid")
+                    st.markdown("")  # Add minimal whitespace
+                    st.download_button(
+                        label="Download Mermaid code",
+                        data=st.session_state.base_mermaid_code,
+                        file_name="flowchart.md",
+                        mime="text/plain",
+                    )
 
 
 if __name__ == "__main__":
