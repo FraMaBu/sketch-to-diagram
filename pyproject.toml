@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "sketch-to-diagram"
+version = "0.1.0"
+description = "Generative AI-powered app to convert pictures and screenshots of hand-drawn sketches into professional diagrams with Mermaid.js."
+authors = ["Dr. Franz Buchmann <franz.buchmann07@gmail.com>"]
+readme = "README.md"
+repository = "https://github.com/FraMaBu/sketch-to-diagram"
+packages = [
+    { include = "app" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+streamlit = "^1.31.0"
+openai = "^1.12.0"
+python-dotenv = "^1.0.0"
+pillow = "^10.2.0"
+streamlit-mermaid = "^0.2.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.1.1"
+pytest = "^8.0.0"
+flake8 = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

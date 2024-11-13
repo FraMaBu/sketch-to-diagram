@@ -1,11 +1,20 @@
 """Main Streamlit application for converting sketches to Mermaid diagrams."""
 
 import streamlit as st
+import logging
 from PIL import Image
 from streamlit_mermaid import st_mermaid
 from utils import process_image_with_openai, apply_style_to_mermaid
 from prompts.draft import DRAFT_PROMPT
 from prompts.style import STYLE_GUIDE, STYLE_PROMPT
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 
 def load_image(image_file):
@@ -13,6 +22,7 @@ def load_image(image_file):
     try:
         return Image.open(image_file)
     except Exception as e:
+        logger.error(f"Failed to load image: {str(e)}")
         st.error(f"Error loading image: {str(e)}")
         return None
 
@@ -37,6 +47,7 @@ def apply_zoom_to_mermaid(mermaid_code: str, zoom_level: float) -> str:
 
 
 def main():
+    logger.info("Starting application")
     st.set_page_config(
         page_title="Sketch to Professional Visual Converter",
         page_icon="📊",
@@ -80,22 +91,24 @@ def main():
 
     st.markdown("---")
 
-    # Upload Section - Updated help text
+    # Upload Section
     with st.container():
         st.subheader("Upload Sketch")
         uploaded_file = st.file_uploader(
             "Choose an image file",
             type=["png", "jpg", "jpeg"],
-            help="Supported formats: PNG, JPEG",  # More generic help text
+            help="Supported formats: PNG, JPEG",
         )
         if uploaded_file is not None:
             image = load_image(uploaded_file)
             if image is None:
+                logger.warning("Invalid image file uploaded")
                 st.error(
                     "Unable to process image. Please ensure it's a valid PNG or JPEG file."
                 )
                 generate_button = st.button("Generate Mermaid Diagram", disabled=True)
             else:
+                logger.info("Image successfully uploaded")
                 generate_button = st.button(
                     "Generate Mermaid Diagram",
                     type="primary",
@@ -120,32 +133,36 @@ def main():
             st.subheader("Generated Diagram")
             st.markdown("")
 
-            # Processing logic - Updated messages
+            # Processing logic
             if generate_button:
                 st.session_state.processing = True
 
-            if st.session_state.processing:
-                try:
-                    with st.spinner("Converting your sketch to Mermaid diagram..."):
-                        draft_code = process_image_with_openai(
-                            uploaded_file, DRAFT_PROMPT
+                if st.session_state.processing:
+                    try:
+                        with st.spinner("Converting your sketch to Mermaid diagram..."):
+                            draft_code = process_image_with_openai(
+                                uploaded_file, DRAFT_PROMPT
+                            )
+                            logger.info("Draft generation completed")
+
+                            styled_code = apply_style_to_mermaid(
+                                draft_code, prompt=STYLE_PROMPT, guide=STYLE_GUIDE
+                            )
+                            logger.info("Style application completed")
+
+                            st.session_state.base_mermaid_code = styled_code
+                            st.session_state.generation_completed = True
+                            st.session_state.processing = False
+                            st.success(
+                                "✨ Diagram generated! Use the toolbar below to adjust the view. Use the code view to download the mermaid code."
+                            )
+                    except Exception as e:
+                        logger.error(f"Diagram generation failed: {str(e)}")
+                        st.error(
+                            "⚠️ Generation failed. The image might be too complex or unclear. Please try again."
                         )
-                        styled_code = apply_style_to_mermaid(
-                            draft_code, prompt=STYLE_PROMPT, guide=STYLE_GUIDE
-                        )
-                        st.session_state.base_mermaid_code = styled_code
-                        st.session_state.generation_completed = True
                         st.session_state.processing = False
-                        st.success(
-                            "✨ Diagram generated! Use the toolbar below to adjust the view. Use the code view to download the mermaid code."
-                        )
-                except Exception as e:
-                    print(e)
-                    st.error(
-                        "⚠️ Generation failed. The image might be too complex or unclear. Please try again."
-                    )
-                    st.session_state.processing = False
-                    st.session_state.generation_completed = False
+                        st.session_state.generation_completed = False
 
             # Initialize tabs
             tab1, tab2 = st.tabs(["Diagram view", "Code view"])
