@@ -1,23 +1,25 @@
-# app/utils.py
+"""Helper functions for image processing and OpenAI API interactions."""
+
 import base64
-from openai import OpenAI
 import os
+from openai import OpenAI
 from dotenv import load_dotenv
 
 
+# Load environment variables
 load_dotenv()
 
 
-def encode_image(image_file):
-    """Encode uploaded image to base64"""
+def encode_image(image_file) -> str:
+    """Encode uploaded image to base64."""
     try:
         return base64.b64encode(image_file.getvalue()).decode("utf-8")
     except Exception as e:
         raise Exception(f"Error encoding image: {str(e)}")
 
 
-def process_image_with_openai(image_file, prompt):
-    """Process image using OpenAI's Vision API"""
+def process_image_with_openai(image_file, prompt: str) -> str:
+    """Process image using OpenAI's Vision API to generate Mermaid diagram code."""
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -51,19 +53,18 @@ def process_image_with_openai(image_file, prompt):
         raise Exception(f"Error processing image with OpenAI: {str(e)}")
 
 
-def apply_style_to_mermaid(draft_code, style_prompt):
-    """Apply styling to Mermaid code without sending image again"""
+def apply_style_to_mermaid(draft_code: str, prompt: str, guide: str) -> str:
+    """Apply styling to Mermaid code using OpenAI."""
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # Prepare messages with draft code and style prompt
+        # Prepare messages with style guide as system message and draft code in prompt
         messages = [
-            {
-                "role": "user",
-                "content": f"{style_prompt}\n\nApply the style guide to the following Mermaid code. Do not change the labels:\n{draft_code}",
-            }
+            {"role": "system", "content": guide},
+            {"role": "user", "content": prompt.format(mermaid_code=draft_code)},
         ]
 
+        # Make API call
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,

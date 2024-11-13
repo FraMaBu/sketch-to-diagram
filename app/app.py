@@ -1,9 +1,11 @@
+"""Main Streamlit application for converting sketches to Mermaid diagrams."""
+
 import streamlit as st
 from PIL import Image
-import io
-from utils import process_image_with_openai, apply_style_to_mermaid
-from prompts import DRAFT_PROMPT, STYLE_GUIDE
 from streamlit_mermaid import st_mermaid
+from utils import process_image_with_openai, apply_style_to_mermaid
+from prompts.draft import DRAFT_PROMPT
+from prompts.style import STYLE_GUIDE, STYLE_PROMPT
 
 
 def load_image(image_file):
@@ -69,7 +71,9 @@ def main():
         st.markdown("Take a photo or screenshot of your hand-written diagram sketch")
     with col2:
         st.caption("2️⃣ Generate diagram")
-        st.markdown("Click generate and wait for processing of your uploaded sketch")
+        st.markdown(
+            "Click generate button and wait for generation of mermaid visual diagram"
+        )
     with col3:
         st.caption("3️⃣ Explore & export")
         st.markdown("Explore visual by zooming in or out and download code if desired")
@@ -126,7 +130,9 @@ def main():
                         draft_code = process_image_with_openai(
                             uploaded_file, DRAFT_PROMPT
                         )
-                        styled_code = apply_style_to_mermaid(draft_code, STYLE_GUIDE)
+                        styled_code = apply_style_to_mermaid(
+                            draft_code, prompt=STYLE_PROMPT, guide=STYLE_GUIDE
+                        )
                         st.session_state.base_mermaid_code = styled_code
                         st.session_state.generation_completed = True
                         st.session_state.processing = False
@@ -134,6 +140,7 @@ def main():
                             "✨ Diagram generated! Use the toolbar below to adjust the view. Use the code view to download the mermaid code."
                         )
                 except Exception as e:
+                    print(e)
                     st.error(
                         "⚠️ Generation failed. The image might be too complex or unclear. Please try again."
                     )
@@ -145,7 +152,6 @@ def main():
 
             with tab1:
                 if st.session_state.generation_completed:
-                    # ... (zoom controls remain the same)
                     cols = st.columns([1, 1, 1, 10])
 
                     with cols[0]:
@@ -182,7 +188,7 @@ def main():
                     st.download_button(
                         label="Download Mermaid code",
                         data=st.session_state.base_mermaid_code,
-                        file_name="flowchart.md",
+                        file_name="flowchart.txt",
                         mime="text/plain",
                     )
 
