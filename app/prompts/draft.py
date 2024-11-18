@@ -42,6 +42,7 @@ If the screenshot includes a combination of text and graphics, focus on text and
 In cases where the screenshot cannot be processed directly, ask the user to describe its content or share its structure verbally.
 
 ## Important
+
 Create actual Mermaid.js flowchart code that can be rendered. Return ONLY the Mermaid.js code without any explanation or code blocks.
 I repeat, DO NOT USE CODE BLOCKS.
 """
