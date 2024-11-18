@@ -14,29 +14,26 @@ If the content is ambiguous, provide logical interpretations while maintaining t
 2. Chart Type Identification:
 Based on the screenshot, determine the most appropriate Mermaid.js chart type:
 - Flowchart: For processes or workflows.
-- Sequence Diagram: For time-sequenced events.
-- Class Diagram: For relationships or hierarchies.
-- Gant chart: For project timelines.
-Other types, as inferred from the screenshot.
+- Mindmap: For brainstorming or planning.
+- Other types, as inferred from the screenshot.
 
 3. Construct the Chart:
-Use Mermaid.js syntax to define nodes, edges, and labels based on extracted content.
-Maintain clarity and logical structure.
-Fill gaps or ambiguities based on the context provided.
+- Use Mermaid.js syntax to define nodes, edges, and labels based on extracted content.
+- Maintain clarity and logical structure.
+- Fill gaps or ambiguities based on the context provided.
 
 4. Validate the Chart:
-Ensure the output aligns with Mermaid.js conventions.
-Test readability and coherence in the chart's flow or structure.
+- Ensure the output aligns with Mermaid.js conventions.
+- Test readability and coherence in the chart's flow or structure.
 
 ## Output Format
 
 Present the chart in valid Mermaid.js syntax.
 Example:
-```mermaid
-graph TD
-  A[Extract Text] --> B[Determine Chart Type]
-  B --> C[Construct Chart]
-  C --> D[Validate and Format]
+[Chart type]
+  A[Extract text] --> B[Determine chart type]
+  B --> C[Construct chart]
+  C --> D[Validate and format]
 ```
 
 ## Notes

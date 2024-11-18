@@ -66,7 +66,7 @@ def apply_style_to_mermaid(draft_code: str, prompt: str, guide: str) -> str:
 
         # Make API call
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=messages,
             max_tokens=1000,
             temperature=0,  # Strict responses

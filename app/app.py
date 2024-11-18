@@ -3,10 +3,10 @@
 import streamlit as st
 import logging
 from PIL import Image
-from streamlit_mermaid import st_mermaid
 from utils import process_image_with_openai, apply_style_to_mermaid
 from prompts.draft import DRAFT_PROMPT
 from prompts.style import STYLE_GUIDE, STYLE_PROMPT
+from components.mermaid_viewer import render_mermaid
 
 # Configure logging
 logging.basicConfig(
@@ -108,7 +108,6 @@ def main():
                 )
                 generate_button = st.button("Generate Mermaid Diagram", disabled=True)
             else:
-                logger.info("Image successfully uploaded")
                 generate_button = st.button(
                     "Generate Mermaid Diagram",
                     type="primary",
@@ -121,6 +120,7 @@ def main():
 
     # Main content area
     if uploaded_file is not None and image is not None:
+        logger.info("Image successfully loaded")
         left_col, right_col = st.columns([1, 1], gap="large")
 
         with left_col:
@@ -169,29 +169,7 @@ def main():
 
             with tab1:
                 if st.session_state.generation_completed:
-                    cols = st.columns([1, 1, 1, 10])
-
-                    with cols[0]:
-                        if st.button("➕", help="Increase diagram size"):
-                            st.session_state.zoom_level = min(
-                                2.5, st.session_state.zoom_level + 0.5
-                            )
-
-                    with cols[1]:
-                        if st.button("➖", help="Decrease diagram size"):
-                            st.session_state.zoom_level = max(
-                                0.5, st.session_state.zoom_level - 0.5
-                            )
-
-                    with cols[2]:
-                        if st.button("⟲", help="Reset diagram size"):
-                            st.session_state.zoom_level = 1.0
-
-                    zoomed_code = apply_zoom_to_mermaid(
-                        st.session_state.base_mermaid_code, st.session_state.zoom_level
-                    )
-                    st_mermaid(zoomed_code, height="700px")
-
+                    render_mermaid(st.session_state.base_mermaid_code)
                 else:
                     if not st.session_state.processing:
                         st.info(
