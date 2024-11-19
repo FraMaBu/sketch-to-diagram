@@ -1,7 +1,8 @@
 """Main Streamlit application for converting sketches to Mermaid diagrams."""
 
-import streamlit as st
 import logging
+import time
+import streamlit as st
 from PIL import Image
 from utils import process_image_with_openai, apply_style_to_mermaid
 from prompts.draft import DRAFT_PROMPT
@@ -27,27 +28,15 @@ def load_image(image_file):
         return None
 
 
-def apply_zoom_to_mermaid(mermaid_code: str, zoom_level: float) -> str:
-    """Apply zoom level to Mermaid code by adding initialization directive"""
-    init_directive = f"""%%{{init: {{
-        "theme": "dark",
-        "flowchart": {{
-            "curve": "basis",
-            "nodeSpacing": {50 * zoom_level},
-            "rankSpacing": {50 * zoom_level}
-        }}
-    }}}}%%\n"""
-
-    if "%%{init:" in mermaid_code:
-        import re
-
-        mermaid_code = re.sub(r"%%{init:.*?}%%\n?", "", mermaid_code)
-
-    return init_directive + mermaid_code
+def reset_generation_state():
+    """Reset all generation-related session state variables"""
+    logger.info("Resetting generation state - new image uploaded")
+    st.session_state.generation_completed = False
+    st.session_state.base_mermaid_code = None
+    st.session_state.processing = False
 
 
 def main():
-    logger.info("Starting application")
     st.set_page_config(
         page_title="Sketch to Professional Visual Converter",
         page_icon="📊",
@@ -55,15 +44,15 @@ def main():
         initial_sidebar_state="collapsed",
     )
 
-    # Initialize session state
+    # Initialize session states
     if "generation_completed" not in st.session_state:
         st.session_state.generation_completed = False
-    if "zoom_level" not in st.session_state:
-        st.session_state.zoom_level = 1.0
     if "base_mermaid_code" not in st.session_state:
         st.session_state.base_mermaid_code = None
     if "processing" not in st.session_state:
         st.session_state.processing = False
+    if "last_uploaded_file" not in st.session_state:
+        st.session_state.last_uploaded_file = None
 
     # Header Section
     left_spacer, center_col, right_spacer = st.columns([2, 6, 2])
@@ -99,6 +88,12 @@ def main():
             type=["png", "jpg", "jpeg"],
             help="Supported formats: PNG, JPEG",
         )
+
+        # Reset state if a new file is uploaded
+        if uploaded_file != st.session_state.last_uploaded_file:
+            reset_generation_state()
+            st.session_state.last_uploaded_file = uploaded_file
+
         if uploaded_file is not None:
             image = load_image(uploaded_file)
             if image is None:
@@ -120,7 +115,6 @@ def main():
 
     # Main content area
     if uploaded_file is not None and image is not None:
-        logger.info("Image successfully loaded")
         left_col, right_col = st.columns([1, 1], gap="large")
 
         with left_col:
@@ -135,26 +129,31 @@ def main():
 
             # Processing logic
             if generate_button:
+                logger.info("Starting diagram processing")
                 st.session_state.processing = True
 
                 if st.session_state.processing:
                     try:
                         with st.spinner("Converting your sketch to Mermaid diagram..."):
+                            start_time = time.time()
                             draft_code = process_image_with_openai(
                                 uploaded_file, DRAFT_PROMPT
                             )
-                            logger.info("Draft generation completed")
 
                             styled_code = apply_style_to_mermaid(
                                 draft_code, prompt=STYLE_PROMPT, guide=STYLE_GUIDE
                             )
-                            logger.info("Style application completed")
+
+                            processing_time = time.time() - start_time
+                            logger.info(
+                                f"Generation completed successfully in {processing_time:.2f}s"
+                            )
 
                             st.session_state.base_mermaid_code = styled_code
                             st.session_state.generation_completed = True
                             st.session_state.processing = False
                             st.success(
-                                "✨ Diagram generated! Use the toolbar below to adjust the view. Use the code view to download the mermaid code."
+                                "✨ Diagram generated! Use the toolbar below to adjust the view. Click the download button to get the mermaid code."
                             )
                     except Exception as e:
                         logger.error(f"Diagram generation failed: {str(e)}")
@@ -163,6 +162,18 @@ def main():
                         )
                         st.session_state.processing = False
                         st.session_state.generation_completed = False
+
+            # Download button for mermaid code
+            if st.session_state.generation_completed:
+                col1, col2 = st.columns([1, 4])
+                with col1:
+                    st.download_button(
+                        label="📥 Download chart",
+                        data=st.session_state.base_mermaid_code,
+                        file_name="flowchart.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                    )
 
             # Initialize tabs
             tab1, tab2 = st.tabs(["Diagram view", "Code view"])
@@ -180,12 +191,6 @@ def main():
                 if st.session_state.generation_completed:
                     st.code(st.session_state.base_mermaid_code, language="mermaid")
                     st.markdown("")  # Add minimal whitespace
-                    st.download_button(
-                        label="Download Mermaid code",
-                        data=st.session_state.base_mermaid_code,
-                        file_name="flowchart.txt",
-                        mime="text/plain",
-                    )
 
 
 if __name__ == "__main__":
