@@ -26,15 +26,22 @@ Based on the screenshot, determine the most appropriate Mermaid.js chart type:
 - Ensure the output aligns with Mermaid.js conventions.
 - Test readability and coherence in the chart's flow or structure.
 
-## Output Format
+## Output
 
-Present the chart in valid Mermaid.js syntax.
-Example:
-[Chart type]
-  A[Extract text] --> B[Determine chart type]
-  B --> C[Construct chart]
-  C --> D[Validate and format]
-```
+1. Schema:
+Return your response as a JSON object with this structure:
+{
+    "chart_type": A Mermaid chart type based on the structure identified in the image,
+    "reason": A one-sentence explanation of why this chart type best fits the image content,
+    "code": The complete Mermaid.js diagram code
+}
+
+2. Example:
+{
+    "chart_type": "flowchart",
+    "reason": "The image shows sequential steps connected by arrows indicating a process flow",
+    "code": "flowchart TB\\n  A[Start] --> B[Process]\\n  B --> C[End]"
+}
 
 ## Notes
 
@@ -43,6 +50,5 @@ In cases where the screenshot cannot be processed directly, ask the user to desc
 
 ## Important
 
-Create actual Mermaid.js flowchart code that can be rendered. Return ONLY the Mermaid.js code without any explanation or code blocks.
-I repeat, DO NOT USE CODE BLOCKS.
+Return ONLY the JSON response without any explanation or code blocks.
 """

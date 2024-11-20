@@ -4,7 +4,7 @@ import logging
 import time
 import streamlit as st
 from PIL import Image
-from utils import process_image_with_openai, apply_style_to_mermaid
+from utils import process_image_with_openai, apply_style_to_mermaid, DiagramDraft
 from prompts.draft import DRAFT_PROMPT
 from prompts.style import STYLE_GUIDE, STYLE_PROMPT
 from components.mermaid_viewer import render_mermaid
@@ -32,7 +32,8 @@ def reset_generation_state():
     """Reset all generation-related session state variables"""
     logger.info("Resetting generation state - new image uploaded")
     st.session_state.generation_completed = False
-    st.session_state.base_mermaid_code = None
+    st.session_state.draft_result = None
+    st.session_state.styled_code = None
     st.session_state.processing = False
 
 
@@ -47,8 +48,10 @@ def main():
     # Initialize session states
     if "generation_completed" not in st.session_state:
         st.session_state.generation_completed = False
-    if "base_mermaid_code" not in st.session_state:
-        st.session_state.base_mermaid_code = None
+    if "draft_result" not in st.session_state:
+        st.session_state.draft_result = None
+    if "styled_code" not in st.session_state:
+        st.session_state.styled_code = None
     if "processing" not in st.session_state:
         st.session_state.processing = False
     if "last_uploaded_file" not in st.session_state:
@@ -136,25 +139,43 @@ def main():
                     try:
                         with st.spinner("Converting your sketch to Mermaid diagram..."):
                             start_time = time.time()
-                            draft_code = process_image_with_openai(
+
+                            # Get structured draft result
+                            draft_result = process_image_with_openai(
                                 uploaded_file, DRAFT_PROMPT
                             )
+                            st.session_state.draft_result = draft_result
 
+                            # Apply styling to the draft code
                             styled_code = apply_style_to_mermaid(
-                                draft_code, prompt=STYLE_PROMPT, guide=STYLE_GUIDE
+                                draft_result.code,
+                                prompt=STYLE_PROMPT,
+                                guide=STYLE_GUIDE,
                             )
+                            st.session_state.styled_code = styled_code
 
                             processing_time = time.time() - start_time
                             logger.info(
                                 f"Generation completed successfully in {processing_time:.2f}s"
                             )
 
-                            st.session_state.base_mermaid_code = styled_code
                             st.session_state.generation_completed = True
                             st.session_state.processing = False
-                            st.success(
-                                "✨ Diagram generated! Use the toolbar below to adjust the view. Click the download button to get the mermaid code."
-                            )
+
+                            # Success message with AI analysis
+                            st.success("✨ Diagram generated successfully!")
+                            analysis_col1, analysis_col2 = st.columns([1, 3])
+
+                            with analysis_col1:
+                                st.caption("AI SUGGESTED TYPE")
+                                st.markdown(f"**{draft_result.chart_type.upper()}**")
+
+                            with analysis_col2:
+                                st.caption("AI REASONING")
+                                st.markdown(draft_result.reason)
+
+                            st.markdown("")
+
                     except Exception as e:
                         logger.error(f"Diagram generation failed: {str(e)}")
                         st.error(
@@ -168,9 +189,10 @@ def main():
                 col1, col2 = st.columns([1, 4])
                 with col1:
                     st.download_button(
+                        type="primary",
                         label="📥 Download chart",
-                        data=st.session_state.base_mermaid_code,
-                        file_name="flowchart.txt",
+                        data=st.session_state.styled_code,
+                        file_name=f"{st.session_state.draft_result.chart_type}_diagram.txt",
                         mime="text/plain",
                         use_container_width=True,
                     )
@@ -180,7 +202,7 @@ def main():
 
             with tab1:
                 if st.session_state.generation_completed:
-                    render_mermaid(st.session_state.base_mermaid_code)
+                    render_mermaid(st.session_state.styled_code)
                 else:
                     if not st.session_state.processing:
                         st.info(
@@ -189,7 +211,7 @@ def main():
 
             with tab2:
                 if st.session_state.generation_completed:
-                    st.code(st.session_state.base_mermaid_code, language="mermaid")
+                    st.code(st.session_state.styled_code, language="mermaid")
                     st.markdown("")  # Add minimal whitespace
 
 

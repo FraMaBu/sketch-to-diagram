@@ -2,6 +2,7 @@
 
 import base64
 import os
+from pydantic import BaseModel, Field
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -10,6 +11,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# Structured output schema
+class DiagramDraft(BaseModel):
+    """Structured output for the initial diagram draft."""
+
+    chart_type: str
+    reason: str
+    code: str
+
+
+# Functions
 def encode_image(image_file) -> str:
     """Encode uploaded image to base64."""
     try:
@@ -18,7 +29,7 @@ def encode_image(image_file) -> str:
         raise Exception(f"Error encoding image: {str(e)}")
 
 
-def process_image_with_openai(image_file, prompt: str) -> str:
+def process_image_with_openai(image_file, prompt: str) -> DiagramDraft:
     """Process image using OpenAI's Vision API to generate Mermaid diagram code."""
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -40,14 +51,16 @@ def process_image_with_openai(image_file, prompt: str) -> str:
             }
         ]
 
-        # Make API call
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        # Make API call with response_format specified for structured output
+        response = client.beta.chat.completions.parse(
+            model="gpt-4o",
             messages=messages,
             max_tokens=1000,
+            response_format=DiagramDraft,
         )
 
-        return response.choices[0].message.content
+        draft = DiagramDraft.model_validate_json(response.choices[0].message.content)
+        return draft
 
     except Exception as e:
         raise Exception(f"Error processing image with OpenAI: {str(e)}")
